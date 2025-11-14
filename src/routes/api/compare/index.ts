@@ -42,7 +42,9 @@ export const onPost: RequestHandler = async ({ json, request }) => {
       return;
     }
 
-    console.log(`[${new Date().toISOString()}] Capturing screenshot for: ${url}`);
+    console.log(
+      `[${new Date().toISOString()}] Capturing screenshot for: ${url}`,
+    );
 
     // Launch browser
     const browser = await chromium.launch({
@@ -96,7 +98,7 @@ export const onPost: RequestHandler = async ({ json, request }) => {
         process.cwd(),
         "public",
         "screenshots",
-        filename
+        filename,
       );
 
       // Ensure directory exists
@@ -116,15 +118,15 @@ export const onPost: RequestHandler = async ({ json, request }) => {
         capturedAt: new Date().toISOString(),
         url,
       };
-      
+
       // TODO: Save the metadata to file
 
       console.log(
-        `[${new Date().toISOString()}] Screenshot saved: /screenshots/${filename}`
+        `[${new Date().toISOString()}] Screenshot saved: /api/screenshots/${filename}`,
       );
 
       json(200, {
-        screenshotUrl: `/screenshots/${filename}`,
+        screenshotUrl: `/api/screenshots/${filename}`,
         metadata,
       } as CompareResponse);
     } finally {
@@ -133,7 +135,7 @@ export const onPost: RequestHandler = async ({ json, request }) => {
   } catch (error) {
     console.error(
       `[${new Date().toISOString()}] Screenshot capture failed:`,
-      error
+      error,
     );
 
     const errorMessage =
