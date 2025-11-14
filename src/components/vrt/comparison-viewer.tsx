@@ -11,7 +11,15 @@ interface ComparisonViewerProps {
 }
 
 export const ComparisonViewer = component$<ComparisonViewerProps>(
-  ({ screenshotA, screenshotB, opacity, topLayer, offsetA, offsetB, error }) => {
+  ({
+    screenshotA,
+    screenshotB,
+    opacity,
+    topLayer,
+    offsetA,
+    offsetB,
+    error,
+  }) => {
     if (error) {
       return (
         <div class="bg-white rounded-lg shadow-md p-6">
@@ -45,7 +53,7 @@ export const ComparisonViewer = component$<ComparisonViewerProps>(
     return (
       <div class="bg-white rounded-lg shadow-md p-6">
         <h2 class="text-2xl font-bold mb-4">Comparison Viewer</h2>
-        
+
         <div
           class="relative border border-gray-300 rounded-md overflow-auto"
           style={{ height: "80vh" }}
@@ -82,14 +90,6 @@ export const ComparisonViewer = component$<ComparisonViewerProps>(
 
         {/* Legend */}
         <div class="mt-4 flex gap-4 text-sm">
-          <div class="flex items-center gap-2">
-            <div class="w-4 h-4 bg-blue-600 rounded"></div>
-            <span>A (prod)</span>
-          </div>
-          <div class="flex items-center gap-2">
-            <div class="w-4 h-4 bg-green-600 rounded"></div>
-            <span>B (dev)</span>
-          </div>
           <div class="flex items-center gap-2 ml-auto">
             <span class="text-gray-600">
               Top layer: {topLayer} ({topLayer === "A" ? "prod" : "dev"})
@@ -98,5 +98,5 @@ export const ComparisonViewer = component$<ComparisonViewerProps>(
         </div>
       </div>
     );
-  }
+  },
 );

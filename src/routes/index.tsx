@@ -10,7 +10,6 @@ export default component$(() => {
   const baseUrlB = useSignal("");
   const path = useSignal("");
   const viewportWidth = useSignal(900);
-  const viewportHeight = useSignal(1440);
   const isLoading = useSignal(false);
 
   // Control state
@@ -33,7 +32,6 @@ export default component$(() => {
       body: JSON.stringify({
         url,
         viewportWidth: viewportWidth.value,
-        viewportHeight: viewportHeight.value,
       }),
     });
 
@@ -96,7 +94,6 @@ export default component$(() => {
               baseUrlB={baseUrlB.value}
               path={path.value}
               viewportWidth={viewportWidth.value}
-              viewportHeight={viewportHeight.value}
               isLoading={isLoading.value}
               onBaseUrlAChange={$((value: string) => {
                 baseUrlA.value = value;
@@ -109,9 +106,6 @@ export default component$(() => {
               })}
               onViewportWidthChange={$((value: number) => {
                 viewportWidth.value = value;
-              })}
-              onViewportHeightChange={$((value: number) => {
-                viewportHeight.value = value;
               })}
               onCompare={handleCompare}
             />

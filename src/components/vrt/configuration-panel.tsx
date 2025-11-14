@@ -5,13 +5,11 @@ interface ConfigurationPanelProps {
   baseUrlB: string;
   path: string;
   viewportWidth: number;
-  viewportHeight: number;
   isLoading: boolean;
   onBaseUrlAChange: QRL<(value: string) => void>;
   onBaseUrlBChange: QRL<(value: string) => void>;
   onPathChange: QRL<(value: string) => void>;
   onViewportWidthChange: QRL<(value: number) => void>;
-  onViewportHeightChange: QRL<(value: number) => void>;
   onCompare: QRL<() => void>;
 }
 
@@ -21,13 +19,11 @@ export const ConfigurationPanel = component$<ConfigurationPanelProps>(
     baseUrlB,
     path,
     viewportWidth,
-    viewportHeight,
     isLoading,
     onBaseUrlAChange,
     onBaseUrlBChange,
     onPathChange,
     onViewportWidthChange,
-    onViewportHeightChange,
     onCompare,
   }) => {
     const isDisabled =
@@ -83,7 +79,9 @@ export const ConfigurationPanel = component$<ConfigurationPanelProps>(
               id="path"
               type="text"
               value={path}
-              onInput$={(e) => onPathChange((e.target as HTMLInputElement).value)}
+              onInput$={(e) =>
+                onPathChange((e.target as HTMLInputElement).value)
+              }
               placeholder="/about"
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               disabled={isLoading}
@@ -110,29 +108,7 @@ export const ConfigurationPanel = component$<ConfigurationPanelProps>(
                   value={viewportWidth}
                   onInput$={(e) =>
                     onViewportWidthChange(
-                      parseInt((e.target as HTMLInputElement).value) || 900
-                    )
-                  }
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  disabled={isLoading}
-                />
-              </div>
-
-              {/* Viewport Height */}
-              <div>
-                <label
-                  for="viewportHeight"
-                  class="block text-sm font-medium mb-1"
-                >
-                  Viewport Height (px)
-                </label>
-                <input
-                  id="viewportHeight"
-                  type="number"
-                  value={viewportHeight}
-                  onInput$={(e) =>
-                    onViewportHeightChange(
-                      parseInt((e.target as HTMLInputElement).value) || 1440
+                      parseInt((e.target as HTMLInputElement).value) || 900,
                     )
                   }
                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -157,5 +133,5 @@ export const ConfigurationPanel = component$<ConfigurationPanelProps>(
         </div>
       </div>
     );
-  }
+  },
 );
