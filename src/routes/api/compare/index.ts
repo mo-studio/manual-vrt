@@ -62,10 +62,14 @@ export const onPost: RequestHandler = async ({ json, request }) => {
       const page = await context.newPage();
 
       // Navigate to URL
+      // Use 'domcontentloaded' instead of 'networkidle' for dev servers with long-lived connections
       await page.goto(url, {
-        waitUntil: "networkidle",
+        waitUntil: "domcontentloaded",
         timeout: 30000,
       });
+
+      // Wait a bit for any dynamic content to render
+      await page.waitForTimeout(1000);
 
       // Auto-scroll to trigger lazy-loaded content
       await page.evaluate(async () => {
