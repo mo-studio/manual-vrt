@@ -1,7 +1,7 @@
 import { component$, useSignal, $ } from "@builder.io/qwik";
 import type { DocumentHead } from "@builder.io/qwik-city";
 import { ConfigurationPanel } from "~/components/vrt/configuration-panel";
-import { ControlsPanel } from "~/components/vrt/controls-panel";
+import { ControlsPanel, type Layer } from "~/components/vrt/controls-panel";
 import { ComparisonViewer } from "~/components/vrt/comparison-viewer";
 
 export default component$(() => {
@@ -12,15 +12,26 @@ export default component$(() => {
   const viewportWidth = useSignal(900);
   const isLoading = useSignal(false);
 
-  // Control state
-  const opacity = useSignal(0.5);
-  const topLayer = useSignal<"A" | "B">("A");
-  const offsetA = useSignal(0);
-  const offsetB = useSignal(0);
+  // Layer state (array order = z-index: first = bottom, last = top)
+  const layers = useSignal<Layer[]>([
+    {
+      id: "layer-a",
+      label: "Layer A (prod)",
+      url: "",
+      screenshotUrl: null,
+      opacity: 1,
+      offset: 0,
+    },
+    {
+      id: "layer-b",
+      label: "Layer B (dev)",
+      url: "",
+      screenshotUrl: null,
+      opacity: 0.5,
+      offset: 0,
+    },
+  ]);
 
-  // Screenshot state
-  const screenshotA = useSignal<string | null>(null);
-  const screenshotB = useSignal<string | null>(null);
   const error = useSignal<string | null>(null);
 
   const captureScreenshot = $(async (url: string) => {
@@ -47,8 +58,6 @@ export default component$(() => {
   const handleCompare = $(async () => {
     isLoading.value = true;
     error.value = null;
-    screenshotA.value = null;
-    screenshotB.value = null;
 
     try {
       const urlA = baseUrlA.value.trim() + path.value.trim();
@@ -60,8 +69,19 @@ export default component$(() => {
         captureScreenshot(urlB),
       ]);
 
-      screenshotA.value = screenshotUrlA;
-      screenshotB.value = screenshotUrlB;
+      // Update layers with new screenshots and URLs
+      layers.value = [
+        {
+          ...layers.value[0],
+          url: urlA,
+          screenshotUrl: screenshotUrlA,
+        },
+        {
+          ...layers.value[1],
+          url: urlB,
+          screenshotUrl: screenshotUrlB,
+        },
+      ];
     } catch (err) {
       error.value = err instanceof Error ? err.message : "An error occurred";
     } finally {
@@ -69,9 +89,40 @@ export default component$(() => {
     }
   });
 
-  const handleResetOffsets = $(() => {
-    offsetA.value = 0;
-    offsetB.value = 0;
+  const handleLayerOpacityChange = $((layerId: string, value: number) => {
+    layers.value = layers.value.map((layer) =>
+      layer.id === layerId ? { ...layer, opacity: value } : layer,
+    );
+  });
+
+  const handleLayerOffsetChange = $((layerId: string, value: number) => {
+    layers.value = layers.value.map((layer) =>
+      layer.id === layerId ? { ...layer, offset: value } : layer,
+    );
+  });
+
+  const handleMoveLayerUp = $((layerId: string) => {
+    const currentIndex = layers.value.findIndex((l) => l.id === layerId);
+    if (currentIndex < layers.value.length - 1) {
+      const newLayers = [...layers.value];
+      [newLayers[currentIndex], newLayers[currentIndex + 1]] = [
+        newLayers[currentIndex + 1],
+        newLayers[currentIndex],
+      ];
+      layers.value = newLayers;
+    }
+  });
+
+  const handleMoveLayerDown = $((layerId: string) => {
+    const currentIndex = layers.value.findIndex((l) => l.id === layerId);
+    if (currentIndex > 0) {
+      const newLayers = [...layers.value];
+      [newLayers[currentIndex], newLayers[currentIndex - 1]] = [
+        newLayers[currentIndex - 1],
+        newLayers[currentIndex],
+      ];
+      layers.value = newLayers;
+    }
   });
 
   return (
@@ -110,40 +161,20 @@ export default component$(() => {
               onCompare={handleCompare}
             />
 
-            {(screenshotA.value || screenshotB.value) && (
+            {layers.value.some((l) => l.screenshotUrl) && (
               <ControlsPanel
-                opacity={opacity.value}
-                topLayer={topLayer.value}
-                offsetA={offsetA.value}
-                offsetB={offsetB.value}
-                onOpacityChange={$((value: number) => {
-                  opacity.value = value;
-                })}
-                onTopLayerChange={$((value: "A" | "B") => {
-                  topLayer.value = value;
-                })}
-                onOffsetAChange={$((value: number) => {
-                  offsetA.value = value;
-                })}
-                onOffsetBChange={$((value: number) => {
-                  offsetB.value = value;
-                })}
-                onResetOffsets={handleResetOffsets}
+                layers={layers.value}
+                onLayerOpacityChange={handleLayerOpacityChange}
+                onLayerOffsetChange={handleLayerOffsetChange}
+                onMoveLayerUp={handleMoveLayerUp}
+                onMoveLayerDown={handleMoveLayerDown}
               />
             )}
           </div>
 
           {/* Right column: Comparison Viewer */}
           <div class="lg:col-span-2">
-            <ComparisonViewer
-              screenshotA={screenshotA.value}
-              screenshotB={screenshotB.value}
-              opacity={opacity.value}
-              topLayer={topLayer.value}
-              offsetA={offsetA.value}
-              offsetB={offsetB.value}
-              error={error.value}
-            />
+            <ComparisonViewer layers={layers.value} error={error.value} />
           </div>
         </div>
       </div>

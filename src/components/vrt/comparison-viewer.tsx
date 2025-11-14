@@ -1,25 +1,13 @@
 import { component$ } from "@builder.io/qwik";
+import type { Layer } from "./controls-panel";
 
 interface ComparisonViewerProps {
-  screenshotA: string | null;
-  screenshotB: string | null;
-  opacity: number;
-  topLayer: "A" | "B";
-  offsetA: number;
-  offsetB: number;
+  layers: Layer[]; // Array order = z-index (first = bottom, last = top)
   error: string | null;
 }
 
 export const ComparisonViewer = component$<ComparisonViewerProps>(
-  ({
-    screenshotA,
-    screenshotB,
-    opacity,
-    topLayer,
-    offsetA,
-    offsetB,
-    error,
-  }) => {
+  ({ layers, error }) => {
     if (error) {
       return (
         <div class="bg-white rounded-lg shadow-md p-6">
@@ -32,7 +20,9 @@ export const ComparisonViewer = component$<ComparisonViewerProps>(
       );
     }
 
-    if (!screenshotA || !screenshotB) {
+    const hasScreenshots = layers.some((layer) => layer.screenshotUrl);
+
+    if (!hasScreenshots) {
       return (
         <div class="bg-white rounded-lg shadow-md p-6">
           <h2 class="text-2xl font-bold mb-4">Comparison Viewer</h2>
@@ -45,11 +35,6 @@ export const ComparisonViewer = component$<ComparisonViewerProps>(
       );
     }
 
-    const bottomImage = topLayer === "A" ? screenshotB : screenshotA;
-    const topImage = topLayer === "A" ? screenshotA : screenshotB;
-    const bottomOffset = topLayer === "A" ? offsetB : offsetA;
-    const topOffset = topLayer === "A" ? offsetA : offsetB;
-
     return (
       <div class="bg-white rounded-lg shadow-md p-6">
         <h2 class="text-2xl font-bold mb-4">Comparison Viewer</h2>
@@ -58,45 +43,42 @@ export const ComparisonViewer = component$<ComparisonViewerProps>(
           class="relative border border-gray-300 rounded-md overflow-auto"
           style={{ height: "80vh" }}
         >
-          {/* Bottom layer */}
-          <div class="absolute inset-0">
-            <img
-              src={bottomImage}
-              alt="Bottom layer"
-              class="w-full h-auto block"
-              style={{
-                transform: `translateY(${bottomOffset}px)`,
-              }}
-            />
-          </div>
+          {/* Render layers in array order (first = bottom) */}
+          {layers.map((layer, index) => {
+            if (!layer.screenshotUrl) return null;
 
-          {/* Top layer with opacity */}
-          <div
-            class="absolute inset-0"
-            style={{
-              opacity: opacity,
-            }}
-          >
-            <img
-              src={topImage}
-              alt="Top layer"
-              class="w-full h-auto block"
-              style={{
-                transform: `translateY(${topOffset}px)`,
-              }}
-            />
-          </div>
+            return (
+              <div
+                key={layer.id}
+                class="absolute inset-0"
+                style={{
+                  opacity: layer.opacity,
+                  zIndex: index,
+                }}
+              >
+                <img
+                  src={layer.screenshotUrl}
+                  alt={`${layer.label} screenshot`}
+                  class="w-full h-auto block"
+                  style={{
+                    transform: `translateY(${layer.offset}px)`,
+                  }}
+                />
+              </div>
+            );
+          })}
         </div>
 
         {/* Legend */}
-        <div class="mt-4 flex gap-4 text-sm">
-          <div class="flex items-center gap-2 ml-auto">
-            <span class="text-gray-600">
-              Top layer: {topLayer} ({topLayer === "A" ? "prod" : "dev"})
-            </span>
-          </div>
+        <div class="mt-4 flex gap-4 text-sm flex-wrap">
+          {layers.map((layer) => (
+            <div key={layer.id} class="flex items-center gap-2">
+              <div class="w-4 h-4 bg-blue-600 rounded"></div>
+              <span class="text-gray-700">{layer.label}</span>
+            </div>
+          ))}
         </div>
       </div>
     );
-  },
+  }
 );
