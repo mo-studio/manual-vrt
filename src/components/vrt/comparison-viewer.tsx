@@ -73,12 +73,15 @@ export const ComparisonViewer = component$<ComparisonViewerProps>(
         <div class="mt-4 flex gap-4 text-sm flex-wrap">
           {layers.map((layer) => (
             <div key={layer.id} class="flex items-center gap-2">
-              <div class="w-4 h-4 bg-blue-600 rounded"></div>
+              <div
+                class="w-4 h-4 bg-blue-600 rounded"
+                style={{ opacity: layer.opacity }}
+              ></div>
               <span class="text-gray-700">{layer.label}</span>
             </div>
           ))}
         </div>
       </div>
     );
-  }
+  },
 );
