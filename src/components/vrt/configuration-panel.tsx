@@ -1,69 +1,84 @@
 import { component$, type QRL } from "@builder.io/qwik";
+import type { Layer } from "./controls-panel";
 
 interface ConfigurationPanelProps {
-  urlA: string;
-  urlB: string;
+  layers: Layer[];
   viewportWidth: number;
   isLoading: boolean;
-  onUrlAChange: QRL<(value: string) => void>;
-  onUrlBChange: QRL<(value: string) => void>;
+  onUrlChange: QRL<(id: string, url: string) => void>;
+  onLabelChange: QRL<(id: string, label: string) => void>;
+  onAddLayer: QRL<() => void>;
+  onRemoveLayer: QRL<(id: string) => void>;
   onViewportWidthChange: QRL<(value: number) => void>;
   onCompare: QRL<() => void>;
 }
 
 export const ConfigurationPanel = component$<ConfigurationPanelProps>(
   ({
-    urlA,
-    urlB,
+    layers,
     viewportWidth,
     isLoading,
-    onUrlAChange,
-    onUrlBChange,
+    onUrlChange,
+    onLabelChange,
+    onAddLayer,
+    onRemoveLayer,
     onViewportWidthChange,
     onCompare,
   }) => {
-    const isDisabled = isLoading || !urlA.trim() || !urlB.trim();
-
+    const hasAnyUrl = layers.some((layer) => layer.url.trim());
+    const isDisabled = isLoading || !hasAnyUrl;
+    const canRemove = layers.length > 2;
     return (
       <div class="bg-white rounded-lg shadow-md p-6 mb-6">
         <h2 class="text-2xl font-bold mb-4">Configuration</h2>
 
         <div class="space-y-4">
-          {/* URL A */}
-          <div>
-            <label for="urlA" class="block text-sm font-medium mb-1">
-              URL A
-            </label>
-            <input
-              id="urlA"
-              type="text"
-              value={urlA}
-              onInput$={(e) =>
-                onUrlAChange((e.target as HTMLInputElement).value)
-              }
-              placeholder="https://www.example.com/about"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={isLoading}
-            />
-          </div>
+          {/* Layer inputs */}
+          {layers.map((layer, index) => (
+            <div key={layer.id} class="border border-gray-200 rounded-md p-3">
+              <div class="flex items-center justify-between mb-2">
+                <input
+                  type="text"
+                  value={layer.label}
+                  onInput$={(e) =>
+                    onLabelChange(layer.id, (e.target as HTMLInputElement).value)
+                  }
+                  placeholder={`Layer ${index + 1}`}
+                  class="text-sm font-medium bg-transparent border-none focus:outline-none focus:ring-0 px-0"
+                  disabled={isLoading}
+                />
+                {canRemove && (
+                  <button
+                    onClick$={() => onRemoveLayer(layer.id)}
+                    disabled={isLoading}
+                    class="text-red-600 hover:text-red-800 text-sm"
+                    title="Remove layer"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+              <input
+                type="text"
+                value={layer.url}
+                onInput$={(e) =>
+                  onUrlChange(layer.id, (e.target as HTMLInputElement).value)
+                }
+                placeholder="https://www.example.com/about"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={isLoading}
+              />
+            </div>
+          ))}
 
-          {/* URL B */}
-          <div>
-            <label for="urlB" class="block text-sm font-medium mb-1">
-              URL B
-            </label>
-            <input
-              id="urlB"
-              type="text"
-              value={urlB}
-              onInput$={(e) =>
-                onUrlBChange((e.target as HTMLInputElement).value)
-              }
-              placeholder="https://dev.example.com/about"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={isLoading}
-            />
-          </div>
+          {/* Add Layer button */}
+          <button
+            onClick$={onAddLayer}
+            disabled={isLoading}
+            class="w-full py-2 px-4 border-2 border-dashed border-gray-300 rounded-md text-gray-600 hover:border-gray-400 hover:text-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            + Add Layer
+          </button>
 
           {/* Advanced Options */}
           <details class="mt-4">

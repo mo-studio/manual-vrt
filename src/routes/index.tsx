@@ -6,24 +6,22 @@ import { ComparisonViewer } from "~/components/vrt/comparison-viewer";
 
 export default component$(() => {
   // Configuration state
-  const urlA = useSignal("");
-  const urlB = useSignal("");
   const viewportWidth = useSignal(900);
   const isLoading = useSignal(false);
 
   // Layer state (array order = z-index: first = bottom, last = top)
   const layers = useSignal<Layer[]>([
     {
-      id: "layer-a",
-      label: "Layer A",
+      id: "layer-1",
+      label: "Layer 1",
       url: "",
       screenshotUrl: null,
       opacity: 1,
       offset: 0,
     },
     {
-      id: "layer-b",
-      label: "Layer B",
+      id: "layer-2",
+      label: "Layer 2",
       url: "",
       screenshotUrl: null,
       opacity: 0.5,
@@ -32,6 +30,39 @@ export default component$(() => {
   ]);
 
   const error = useSignal<string | null>(null);
+
+  const handleAddLayer = $(() => {
+    const newId = `layer-${Date.now()}`;
+    layers.value = [
+      ...layers.value,
+      {
+        id: newId,
+        label: `Layer ${layers.value.length + 1}`,
+        url: "",
+        screenshotUrl: null,
+        opacity: 0.5,
+        offset: 0,
+      },
+    ];
+  });
+
+  const handleRemoveLayer = $((id: string) => {
+    if (layers.value.length > 2) {
+      layers.value = layers.value.filter((layer) => layer.id !== id);
+    }
+  });
+
+  const handleUrlChange = $((id: string, url: string) => {
+    layers.value = layers.value.map((layer) =>
+      layer.id === id ? { ...layer, url } : layer,
+    );
+  });
+
+  const handleLabelChange = $((id: string, label: string) => {
+    layers.value = layers.value.map((layer) =>
+      layer.id === id ? { ...layer, label } : layer,
+    );
+  });
 
   const captureScreenshot = $(async (url: string) => {
     const response = await fetch("/api/compare", {
@@ -59,28 +90,26 @@ export default component$(() => {
     error.value = null;
 
     try {
-      const fullUrlA = urlA.value.trim();
-      const fullUrlB = urlB.value.trim();
+      // Filter out layers without URLs
+      const layersWithUrls = layers.value.filter((layer) => layer.url.trim());
 
-      // Capture both screenshots in parallel
-      const [screenshotUrlA, screenshotUrlB] = await Promise.all([
-        captureScreenshot(fullUrlA),
-        captureScreenshot(fullUrlB),
-      ]);
+      if (layersWithUrls.length === 0) {
+        throw new Error("Please provide at least one URL");
+      }
 
-      // Update layers with new screenshots and URLs
-      layers.value = [
-        {
-          ...layers.value[0],
-          url: fullUrlA,
-          screenshotUrl: screenshotUrlA,
-        },
-        {
-          ...layers.value[1],
-          url: fullUrlB,
-          screenshotUrl: screenshotUrlB,
-        },
-      ];
+      // Capture all screenshots in parallel
+      const screenshotResults = await Promise.all(
+        layersWithUrls.map(async (layer) => ({
+          ...layer,
+          screenshotUrl: await captureScreenshot(layer.url.trim()),
+        })),
+      );
+
+      // Update layers with new screenshots
+      layers.value = layers.value.map((layer) => {
+        const result = screenshotResults.find((r) => r.id === layer.id);
+        return result || layer;
+      });
     } catch (err) {
       error.value = err instanceof Error ? err.message : "An error occurred";
     } finally {
@@ -140,16 +169,13 @@ export default component$(() => {
           {/* Left column: Configuration and Controls */}
           <div class="lg:col-span-1 space-y-6">
             <ConfigurationPanel
-              urlA={urlA.value}
-              urlB={urlB.value}
+              layers={layers.value}
               viewportWidth={viewportWidth.value}
               isLoading={isLoading.value}
-              onUrlAChange={$((value: string) => {
-                urlA.value = value;
-              })}
-              onUrlBChange={$((value: string) => {
-                urlB.value = value;
-              })}
+              onUrlChange={handleUrlChange}
+              onLabelChange={handleLabelChange}
+              onAddLayer={handleAddLayer}
+              onRemoveLayer={handleRemoveLayer}
               onViewportWidthChange={$((value: number) => {
                 viewportWidth.value = value;
               })}
