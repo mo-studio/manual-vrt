@@ -46,12 +46,11 @@ export const ControlsPanel = component$<ControlsPanelProps>(
                 url={layer.url}
                 opacity={layer.opacity}
                 offset={layer.offset}
-                zIndex={actualIndex + 1} // Display as 1-indexed for UX
                 onOpacityChange={$((value: number) =>
-                  onLayerOpacityChange(layer.id, value)
+                  onLayerOpacityChange(layer.id, value),
                 )}
                 onOffsetChange={$((value: number) =>
-                  onLayerOffsetChange(layer.id, value)
+                  onLayerOffsetChange(layer.id, value),
                 )}
                 onMoveUp={$(() => onMoveLayerUp(layer.id))}
                 onMoveDown={$(() => onMoveLayerDown(layer.id))}
@@ -63,5 +62,5 @@ export const ControlsPanel = component$<ControlsPanelProps>(
         </div>
       </div>
     );
-  }
+  },
 );

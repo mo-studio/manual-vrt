@@ -1,11 +1,10 @@
-import { component$, type QRL } from "@builder.io/qwik";
+import { component$, type QRL, useSignal, useTask$ } from "@builder.io/qwik";
 
 interface LayerControlProps {
   label: string;
   url: string;
   opacity: number;
   offset: number;
-  zIndex: number;
   onOpacityChange: QRL<(value: number) => void>;
   onOffsetChange: QRL<(value: number) => void>;
   onMoveUp: QRL<() => void>;
@@ -20,7 +19,6 @@ export const LayerControl = component$<LayerControlProps>(
     url,
     opacity,
     offset,
-    zIndex,
     onOpacityChange,
     onOffsetChange,
     onMoveUp,
@@ -28,6 +26,20 @@ export const LayerControl = component$<LayerControlProps>(
     canMoveUp,
     canMoveDown,
   }) => {
+    const localOpacity = useSignal(opacity);
+    const localOffset = useSignal(offset);
+
+    // Sync props to local signals when they change
+    useTask$(({ track }) => {
+      track(() => opacity);
+      localOpacity.value = opacity;
+    });
+
+    useTask$(({ track }) => {
+      track(() => offset);
+      localOffset.value = offset;
+    });
+
     return (
       <div class="border border-gray-300 rounded-lg p-4 bg-gray-50">
         <div class="flex items-center justify-between mb-3">
@@ -91,19 +103,19 @@ export const LayerControl = component$<LayerControlProps>(
           {/* Opacity Slider */}
           <div>
             <label class="block text-xs font-medium text-gray-700 mb-1">
-              Opacity: {Math.round(opacity * 100)}%
+              Opacity: {Math.round(localOpacity.value * 100)}%
             </label>
             <input
               type="range"
               min="0"
               max="1"
               step="0.01"
-              value={opacity}
-              onInput$={(e) =>
-                onOpacityChange(
-                  parseFloat((e.target as HTMLInputElement).value),
-                )
-              }
+              value={localOpacity.value}
+              onInput$={(e) => {
+                const value = parseFloat((e.target as HTMLInputElement).value);
+                localOpacity.value = value;
+                onOpacityChange(value);
+              }}
               class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
             />
           </div>
@@ -111,17 +123,19 @@ export const LayerControl = component$<LayerControlProps>(
           {/* Offset Slider */}
           <div>
             <label class="block text-xs font-medium text-gray-700 mb-1">
-              Vertical Offset: {offset}px
+              Vertical Offset: {localOffset.value}px
             </label>
             <input
               type="range"
               min="-1000"
               max="1000"
               step="1"
-              value={offset}
-              onInput$={(e) =>
-                onOffsetChange(parseInt((e.target as HTMLInputElement).value))
-              }
+              value={localOffset.value}
+              onInput$={(e) => {
+                const value = parseInt((e.target as HTMLInputElement).value);
+                localOffset.value = value;
+                onOffsetChange(value);
+              }}
               class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
             />
           </div>
