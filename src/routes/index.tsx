@@ -6,9 +6,8 @@ import { ComparisonViewer } from "~/components/vrt/comparison-viewer";
 
 export default component$(() => {
   // Configuration state
-  const baseUrlA = useSignal("");
-  const baseUrlB = useSignal("");
-  const path = useSignal("");
+  const urlA = useSignal("");
+  const urlB = useSignal("");
   const viewportWidth = useSignal(900);
   const isLoading = useSignal(false);
 
@@ -16,7 +15,7 @@ export default component$(() => {
   const layers = useSignal<Layer[]>([
     {
       id: "layer-a",
-      label: "Layer A (prod)",
+      label: "Layer A",
       url: "",
       screenshotUrl: null,
       opacity: 1,
@@ -24,7 +23,7 @@ export default component$(() => {
     },
     {
       id: "layer-b",
-      label: "Layer B (dev)",
+      label: "Layer B",
       url: "",
       screenshotUrl: null,
       opacity: 0.5,
@@ -60,25 +59,25 @@ export default component$(() => {
     error.value = null;
 
     try {
-      const urlA = baseUrlA.value.trim() + path.value.trim();
-      const urlB = baseUrlB.value.trim() + path.value.trim();
+      const fullUrlA = urlA.value.trim();
+      const fullUrlB = urlB.value.trim();
 
       // Capture both screenshots in parallel
       const [screenshotUrlA, screenshotUrlB] = await Promise.all([
-        captureScreenshot(urlA),
-        captureScreenshot(urlB),
+        captureScreenshot(fullUrlA),
+        captureScreenshot(fullUrlB),
       ]);
 
       // Update layers with new screenshots and URLs
       layers.value = [
         {
           ...layers.value[0],
-          url: urlA,
+          url: fullUrlA,
           screenshotUrl: screenshotUrlA,
         },
         {
           ...layers.value[1],
-          url: urlB,
+          url: fullUrlB,
           screenshotUrl: screenshotUrlB,
         },
       ];
@@ -141,19 +140,15 @@ export default component$(() => {
           {/* Left column: Configuration and Controls */}
           <div class="lg:col-span-1 space-y-6">
             <ConfigurationPanel
-              baseUrlA={baseUrlA.value}
-              baseUrlB={baseUrlB.value}
-              path={path.value}
+              urlA={urlA.value}
+              urlB={urlB.value}
               viewportWidth={viewportWidth.value}
               isLoading={isLoading.value}
-              onBaseUrlAChange={$((value: string) => {
-                baseUrlA.value = value;
+              onUrlAChange={$((value: string) => {
+                urlA.value = value;
               })}
-              onBaseUrlBChange={$((value: string) => {
-                baseUrlB.value = value;
-              })}
-              onPathChange={$((value: string) => {
-                path.value = value;
+              onUrlBChange={$((value: string) => {
+                urlB.value = value;
               })}
               onViewportWidthChange={$((value: number) => {
                 viewportWidth.value = value;

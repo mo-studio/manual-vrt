@@ -1,88 +1,65 @@
 import { component$, type QRL } from "@builder.io/qwik";
 
 interface ConfigurationPanelProps {
-  baseUrlA: string;
-  baseUrlB: string;
-  path: string;
+  urlA: string;
+  urlB: string;
   viewportWidth: number;
   isLoading: boolean;
-  onBaseUrlAChange: QRL<(value: string) => void>;
-  onBaseUrlBChange: QRL<(value: string) => void>;
-  onPathChange: QRL<(value: string) => void>;
+  onUrlAChange: QRL<(value: string) => void>;
+  onUrlBChange: QRL<(value: string) => void>;
   onViewportWidthChange: QRL<(value: number) => void>;
   onCompare: QRL<() => void>;
 }
 
 export const ConfigurationPanel = component$<ConfigurationPanelProps>(
   ({
-    baseUrlA,
-    baseUrlB,
-    path,
+    urlA,
+    urlB,
     viewportWidth,
     isLoading,
-    onBaseUrlAChange,
-    onBaseUrlBChange,
-    onPathChange,
+    onUrlAChange,
+    onUrlBChange,
     onViewportWidthChange,
     onCompare,
   }) => {
-    const isDisabled =
-      isLoading || !baseUrlA.trim() || !baseUrlB.trim() || !path.trim();
+    const isDisabled = isLoading || !urlA.trim() || !urlB.trim();
 
     return (
       <div class="bg-white rounded-lg shadow-md p-6 mb-6">
         <h2 class="text-2xl font-bold mb-4">Configuration</h2>
 
         <div class="space-y-4">
-          {/* Base URL A */}
+          {/* URL A */}
           <div>
-            <label for="baseUrlA" class="block text-sm font-medium mb-1">
-              Base URL A (prod / legacy)
+            <label for="urlA" class="block text-sm font-medium mb-1">
+              URL A
             </label>
             <input
-              id="baseUrlA"
+              id="urlA"
               type="text"
-              value={baseUrlA}
+              value={urlA}
               onInput$={(e) =>
-                onBaseUrlAChange((e.target as HTMLInputElement).value)
+                onUrlAChange((e.target as HTMLInputElement).value)
               }
-              placeholder="https://www.example.com"
+              placeholder="https://www.example.com/about"
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               disabled={isLoading}
             />
           </div>
 
-          {/* Base URL B */}
+          {/* URL B */}
           <div>
-            <label for="baseUrlB" class="block text-sm font-medium mb-1">
-              Base URL B (dev)
+            <label for="urlB" class="block text-sm font-medium mb-1">
+              URL B
             </label>
             <input
-              id="baseUrlB"
+              id="urlB"
               type="text"
-              value={baseUrlB}
+              value={urlB}
               onInput$={(e) =>
-                onBaseUrlBChange((e.target as HTMLInputElement).value)
+                onUrlBChange((e.target as HTMLInputElement).value)
               }
-              placeholder="https://dev.example.com"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={isLoading}
-            />
-          </div>
-
-          {/* Path */}
-          <div>
-            <label for="path" class="block text-sm font-medium mb-1">
-              Path (shared between both)
-            </label>
-            <input
-              id="path"
-              type="text"
-              value={path}
-              onInput$={(e) =>
-                onPathChange((e.target as HTMLInputElement).value)
-              }
-              placeholder="/about"
+              placeholder="https://dev.example.com/about"
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               disabled={isLoading}
             />
