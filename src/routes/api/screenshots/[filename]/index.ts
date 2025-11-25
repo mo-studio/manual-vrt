@@ -2,7 +2,7 @@ import type { RequestHandler } from "@builder.io/qwik-city";
 import fs from "fs/promises";
 import path from "path";
 
-export const onGet: RequestHandler = async ({ params, send, status }) => {
+export const onGet: RequestHandler = async ({ params, send, status, headers }) => {
   const { filename } = params;
 
   // Validate filename to prevent path traversal attacks
@@ -27,11 +27,9 @@ export const onGet: RequestHandler = async ({ params, send, status }) => {
     const fileBuffer = await fs.readFile(screenshotPath);
 
     // Set appropriate headers
-    status(200);
-    send(200, fileBuffer, {
-      "Content-Type": "image/png",
-      "Cache-Control": "public, max-age=31536000, immutable",
-    });
+    headers.set("Content-Type", "image/png");
+    headers.set("Cache-Control", "public, max-age=31536000, immutable");
+    send(200, fileBuffer);
   } catch (error) {
     console.error(
       `[${new Date().toISOString()}] Failed to serve screenshot: ${filename}`,

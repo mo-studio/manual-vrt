@@ -1,13 +1,46 @@
-import { component$, useSignal, $ } from "@builder.io/qwik";
+import { component$, useSignal, $, useVisibleTask$ } from "@builder.io/qwik";
 import type { DocumentHead } from "@builder.io/qwik-city";
 import { ConfigurationPanel } from "~/components/vrt/configuration-panel";
-import { ControlsPanel, type Layer } from "~/components/vrt/controls-panel";
+import { ControlsPanel, type Layer, type ViewMode } from "~/components/vrt/controls-panel";
 import { ComparisonViewer } from "~/components/vrt/comparison-viewer";
+
+const STORAGE_KEY = "manual-vrt-settings";
+const DEFAULT_OPACITY = 0.48;
+
+interface StoredSettings {
+  viewportWidth: number;
+  viewMode: ViewMode;
+  layers: Omit<Layer, "screenshotUrl">[];
+}
+
+function loadSettings(): StoredSettings | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch {
+    // Ignore parse errors
+  }
+  return null;
+}
+
+function saveSettings(settings: StoredSettings): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+  } catch {
+    // Ignore storage errors
+  }
+}
 
 export default component$(() => {
   // Configuration state
   const viewportWidth = useSignal(900);
   const isLoading = useSignal(false);
+  const viewMode = useSignal<ViewMode>("overlap");
+  const initialized = useSignal(false);
 
   // Layer state (array order = z-index: first = bottom, last = top)
   const layers = useSignal<Layer[]>([
@@ -17,19 +50,114 @@ export default component$(() => {
       url: "",
       screenshotUrl: null,
       opacity: 1,
-      offset: 0,
+      offsetY: 0,
+      offsetX: 0,
+      invert: true,
     },
     {
       id: "layer-2",
       label: "Layer 2",
       url: "",
       screenshotUrl: null,
-      opacity: 0.5,
-      offset: 0,
+      opacity: DEFAULT_OPACITY,
+      offsetY: 0,
+      offsetX: 0,
+      invert: true,
     },
   ]);
 
   const error = useSignal<string | null>(null);
+
+  // Track if we should auto-run comparison (when URLs come from query params)
+  const shouldAutoRun = useSignal(false);
+
+  // Initialize from localStorage and query params
+  // eslint-disable-next-line qwik/no-use-visible-task
+  useVisibleTask$(() => {
+    // Load from localStorage first
+    const stored = loadSettings();
+    if (stored) {
+      viewportWidth.value = stored.viewportWidth;
+      viewMode.value = stored.viewMode;
+      // Restore layers but clear screenshots
+      layers.value = stored.layers.map((l) => ({
+        ...l,
+        screenshotUrl: null,
+      }));
+    }
+
+    // Check for URL query parameters (these override localStorage)
+    const params = new URLSearchParams(window.location.search);
+    const url1 = params.get("url1");
+    const url2 = params.get("url2");
+    const urlsParam = params.get("urls"); // comma-separated list
+
+    let hasUrlParams = false;
+
+    if (url1 || url2 || urlsParam) {
+      let urls: string[] = [];
+
+      if (urlsParam) {
+        urls = urlsParam.split(",").map((u) => u.trim()).filter(Boolean);
+      } else {
+        if (url1) urls.push(url1);
+        if (url2) urls.push(url2);
+      }
+
+      if (urls.length > 0) {
+        hasUrlParams = true;
+        // Create layers for each URL from query params
+        layers.value = urls.map((url, index) => ({
+          id: `layer-${index + 1}`,
+          label: `Layer ${index + 1}`,
+          url,
+          screenshotUrl: null,
+          opacity: index === 0 ? 1 : DEFAULT_OPACITY,
+          offsetY: 0,
+          offsetX: 0,
+          invert: true,
+        }));
+      }
+    }
+
+    // Also check for viewMode and viewportWidth in params
+    const modeParam = params.get("mode");
+    if (modeParam === "overlap" || modeParam === "side-by-side") {
+      viewMode.value = modeParam;
+    }
+
+    const widthParam = params.get("width");
+    if (widthParam) {
+      const width = parseInt(widthParam);
+      if (!isNaN(width) && width > 0) {
+        viewportWidth.value = width;
+      }
+    }
+
+    initialized.value = true;
+
+    // If URLs were provided via query params, trigger auto-run
+    if (hasUrlParams) {
+      shouldAutoRun.value = true;
+    }
+  });
+
+  // Save to localStorage whenever settings change
+  // eslint-disable-next-line qwik/no-use-visible-task
+  useVisibleTask$(({ track }) => {
+    track(() => viewportWidth.value);
+    track(() => viewMode.value);
+    track(() => layers.value);
+
+    if (!initialized.value) return;
+
+    saveSettings({
+      viewportWidth: viewportWidth.value,
+      viewMode: viewMode.value,
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      layers: layers.value.map(({ screenshotUrl: _, ...rest }) => rest),
+    });
+  });
 
   const handleAddLayer = $(() => {
     const newId = `layer-${Date.now()}`;
@@ -40,8 +168,10 @@ export default component$(() => {
         label: `Layer ${layers.value.length + 1}`,
         url: "",
         screenshotUrl: null,
-        opacity: 0.5,
-        offset: 0,
+        opacity: DEFAULT_OPACITY,
+        offsetY: 0,
+        offsetX: 0,
+        invert: true,
       },
     ];
   });
@@ -117,40 +247,67 @@ export default component$(() => {
     }
   });
 
+  // Auto-run comparison when URLs are provided via query params
+  // eslint-disable-next-line qwik/no-use-visible-task
+  useVisibleTask$(({ track }) => {
+    track(() => shouldAutoRun.value);
+
+    if (shouldAutoRun.value) {
+      shouldAutoRun.value = false;
+      handleCompare();
+    }
+  });
+
   const handleLayerOpacityChange = $((layerId: string, value: number) => {
     layers.value = layers.value.map((layer) =>
       layer.id === layerId ? { ...layer, opacity: value } : layer,
     );
   });
 
-  const handleLayerOffsetChange = $((layerId: string, value: number) => {
+  const handleLayerOffsetYChange = $((layerId: string, value: number) => {
     layers.value = layers.value.map((layer) =>
-      layer.id === layerId ? { ...layer, offset: value } : layer,
+      layer.id === layerId ? { ...layer, offsetY: value } : layer,
     );
   });
 
-  const handleMoveLayerUp = $((layerId: string) => {
-    const currentIndex = layers.value.findIndex((l) => l.id === layerId);
-    if (currentIndex < layers.value.length - 1) {
-      const newLayers = [...layers.value];
-      [newLayers[currentIndex], newLayers[currentIndex + 1]] = [
-        newLayers[currentIndex + 1],
-        newLayers[currentIndex],
-      ];
-      layers.value = newLayers;
-    }
+  const handleLayerOffsetXChange = $((layerId: string, value: number) => {
+    layers.value = layers.value.map((layer) =>
+      layer.id === layerId ? { ...layer, offsetX: value } : layer,
+    );
   });
 
-  const handleMoveLayerDown = $((layerId: string) => {
-    const currentIndex = layers.value.findIndex((l) => l.id === layerId);
-    if (currentIndex > 0) {
-      const newLayers = [...layers.value];
-      [newLayers[currentIndex], newLayers[currentIndex - 1]] = [
-        newLayers[currentIndex - 1],
-        newLayers[currentIndex],
-      ];
-      layers.value = newLayers;
+  const handleLayerInvertChange = $((layerId: string, value: boolean) => {
+    layers.value = layers.value.map((layer) =>
+      layer.id === layerId ? { ...layer, invert: value } : layer,
+    );
+  });
+
+  const handleViewModeChange = $((mode: ViewMode) => {
+    viewMode.value = mode;
+  });
+
+  // Track whether offset changes should be animated (only for auto-align)
+  const animateOffset = useSignal(false);
+
+  const handleAutoAlign = $((offsetX: number, offsetY: number) => {
+    // Enable animation for auto-align
+    animateOffset.value = true;
+
+    // Apply the offset to the top layer (last in array with screenshot)
+    const topLayerIndex = layers.value.length - 1;
+    const topLayer = layers.value[topLayerIndex];
+    if (topLayer) {
+      layers.value = layers.value.map((layer, index) =>
+        index === topLayerIndex
+          ? { ...layer, offsetX, offsetY }
+          : layer,
+      );
     }
+
+    // Disable animation after transition completes
+    setTimeout(() => {
+      animateOffset.value = false;
+    }, 350);
   });
 
   return (
@@ -185,17 +342,25 @@ export default component$(() => {
             {layers.value.some((l) => l.screenshotUrl) && (
               <ControlsPanel
                 layers={layers.value}
+                viewMode={viewMode.value}
                 onLayerOpacityChange={handleLayerOpacityChange}
-                onLayerOffsetChange={handleLayerOffsetChange}
-                onMoveLayerUp={handleMoveLayerUp}
-                onMoveLayerDown={handleMoveLayerDown}
+                onLayerOffsetYChange={handleLayerOffsetYChange}
+                onLayerOffsetXChange={handleLayerOffsetXChange}
+                onLayerInvertChange={handleLayerInvertChange}
+                onViewModeChange={handleViewModeChange}
               />
             )}
           </div>
 
           {/* Right column: Comparison Viewer */}
           <div class="lg:col-span-2">
-            <ComparisonViewer layers={layers.value} error={error.value} />
+            <ComparisonViewer
+                layers={layers.value}
+                viewMode={viewMode.value}
+                error={error.value}
+                onAutoAlign={handleAutoAlign}
+                animateOffset={animateOffset.value}
+              />
           </div>
         </div>
       </div>
